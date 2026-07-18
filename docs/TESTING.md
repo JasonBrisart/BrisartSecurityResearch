@@ -1,8 +1,8 @@
 # Testing Guide
 
-BrisartSecurityResearch uses three separate testing layers. Each layer answers a different question, and none establishes cryptographic security.
+BrisartSecurityResearch uses three testing layers. Each layer answers a different question, and none establishes cryptographic security.
 
-## 1. Behavioral unit tests
+## 1. Behavioral and boundary tests
 
 File:
 
@@ -10,7 +10,13 @@ File:
 tests/test_brisart_security.py
 ```
 
-These tests cover implemented behavior such as:
+Run from the repository root:
+
+```bash
+python -m unittest -v tests.test_brisart_security
+```
+
+The suite covers implemented behavior including:
 
 - encryption and decryption round trips
 - randomized envelope output
@@ -21,13 +27,9 @@ These tests cover implemented behavior such as:
 - hexadecimal encoding and decoding
 - deterministic hash behavior
 - a basic avalanche observation
-- DRBG determinism, input validation, reseeding, and destroyed-state behavior
+- DRBG determinism, reseeding, destruction, and lifecycle behavior
 
-Run from the repository root:
-
-```bash
-python -m unittest -v tests.test_brisart_security
-```
+The suite also checks fail-closed boundaries for malformed envelopes, invalid primitive parameters, canonical hexadecimal validation, envelope size limits, DRBG request limits, and DRBG lifecycle boundaries.
 
 ## 2. Frozen known-answer regression tests
 
@@ -38,22 +40,22 @@ tests/test_known_answer_vectors.py
 tests/known_answer_vectors.json
 ```
 
-The JSON file contains expected outputs for the hash, MAC, stream generator, DRBG, and complete envelope. The test verifies that the current implementation still produces those exact outputs.
-
 Run:
 
 ```bash
 python -m unittest -v tests.test_known_answer_vectors
 ```
 
+The JSON file contains expected outputs for the hash, MAC, stream generator, DRBG, and complete envelope. The test verifies that the current implementation still produces those exact outputs.
+
 ### Vector policy
 
-Do not regenerate vectors before an ordinary test run. Doing so would replace the expected answers and could hide an accidental algorithm change.
+Do not regenerate vectors before an ordinary test run. Regenerating first would replace the expected answers and could hide an accidental algorithm change.
 
 Run the vector generator only when intentionally changing the algorithm or envelope format:
 
 ```bash
-python generate_test_vectors.py
+python tests/generate_test_vectors.py
 ```
 
 Review vector changes separately. An intentional vector change should be accompanied by a version decision, documentation update, changelog entry, and fresh research results.
@@ -63,17 +65,17 @@ Review vector changes separately. An intentional vector change should be accompa
 Files:
 
 ```text
-run_research_suite.py
-research_test_config.json
+research/run_research_suite.py
+research/research_test_config.json
 ```
 
 Run:
 
 ```bash
-python run_research_suite.py --config research_test_config.json
+python research/run_research_suite.py --config research/research_test_config.json
 ```
 
-The suite writes its current reports into:
+The suite writes:
 
 ```text
 results/research_test_results.md
@@ -83,16 +85,28 @@ results/research_test_results.csv
 
 The configuration controls trial counts, message sizes, deterministic seed, statistical boundaries, output sample size, and benchmark repetitions.
 
+The generated JSON and Markdown reports record:
+
+- Python version and implementation
+- operating system and platform release
+- Git source revision when available
+- configuration SHA-256
+- known-answer-vector SHA-256
+- check and benchmark summaries
+- per-result metrics and runtime
+
+Performance measurements are labeled `BENCHMARK` and are not included in the passed-check count.
+
 ## Complete local test sequence
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
-python run_research_suite.py --config research_test_config.json
+python research/run_research_suite.py --config research/research_test_config.json
 ```
 
 ## Interpreting results
 
-Behavioral and known-answer passes establish that the tested implementation behaved as expected for the supplied cases.
+Behavioral and known-answer passes establish only that the tested implementation behaved as expected for the supplied cases.
 
 Research-suite observations can expose obvious regressions, repeated outputs, poor diffusion, malformed-envelope acceptance, or unexpected local statistics. They do not establish:
 
@@ -105,11 +119,11 @@ Research-suite observations can expose obvious regressions, repeated outputs, po
 - side-channel resistance
 - production security
 
-Performance measurements are informational benchmarks. They are machine- and interpreter-dependent and should not be described as security passes.
+Performance measurements are informational, machine-dependent benchmarks. They are not security passes.
 
 ## Continuous integration
 
-The GitHub Actions workflow compiles the source and test files, runs both unittest modules, and runs the configurable research suite. The workflow must not regenerate known-answer vectors.
+The GitHub Actions workflow compiles the source, research, and test files, runs the unittest modules, and runs the configurable research suite. The workflow must not regenerate known-answer vectors.
 
 ## Updating committed results
 

@@ -12,13 +12,20 @@ import csv
 import hashlib
 import json
 import math
+import platform
 import random
 import statistics
+import subprocess
+import sys
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from brisart_security_drbg import BrisartDRBG
 from brisart_security_envelope import BrisartEnvelopeError, decrypt, encrypt
@@ -45,11 +52,18 @@ class Suite:
     def bytes(self, length: int) -> bytes:
         return bytes(self.random.getrandbits(8) for _ in range(length))
 
-    def run(self, category: str, name: str, trials: int, function: Callable[[], tuple[bool, dict, str]]) -> None:
+    def run(
+        self,
+        category: str,
+        name: str,
+        trials: int,
+        function: Callable[[], tuple[bool, dict, str]],
+        success_status: str = "PASS",
+    ) -> None:
         started = time.perf_counter()
         try:
             passed, metrics, note = function()
-            status = "PASS" if passed else "FAIL"
+            status = success_status if passed else "FAIL"
         except Exception as exc:
             status = "ERROR"
             metrics = {"exception_type": type(exc).__name__}
@@ -293,60 +307,151 @@ class Suite:
         self.run("envelope", "binary field tamper rejection", e["tamper_trials"], self.envelope_tamper)
         self.run("envelope", "wrong context rejection", e["wrong_context_trials"], self.envelope_wrong_context)
         self.run("envelope", "wrong key rejection", e["wrong_key_trials"], self.envelope_wrong_key)
-        self.run("performance", "hash throughput", sum(p["hash_repetitions"]), self.performance_hash)
-        self.run("performance", "envelope round-trip throughput", sum(p["envelope_repetitions"]), self.performance_envelope)
+        self.run(
+            "performance",
+            "hash throughput",
+            sum(p["hash_repetitions"]),
+            self.performance_hash,
+            success_status="BENCHMARK",
+        )
+        self.run(
+            "performance",
+            "envelope round-trip throughput",
+            sum(p["envelope_repetitions"]),
+            self.performance_envelope,
+            success_status="BENCHMARK",
+        )
 
 
-def write_outputs(config: dict, results: list[Result], output_dir: Path, baseline: dict | None = None) -> None:
+def sha256_file(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def run_git(repository_root: Path, *arguments: str) -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", *arguments],
+            cwd=repository_root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    return completed.stdout.strip()
+
+
+def build_provenance(config_path: Path) -> dict:
+    repository_root = Path(__file__).resolve().parents[1]
+    vector_path = repository_root / "tests" / "known_answer_vectors.json"
+    return {
+        "python_version": platform.python_version(),
+        "python_implementation": platform.python_implementation(),
+        "operating_system": platform.system(),
+        "platform_release": platform.release(),
+        "source_revision": run_git(repository_root, "rev-parse", "HEAD"),
+        "source_tree_dirty": bool(
+            run_git(repository_root, "status", "--porcelain") or ""
+        ),
+        "configuration_path": config_path.name,
+        "configuration_sha256": sha256_file(config_path),
+        "known_answer_vector_path": "tests/known_answer_vectors.json",
+        "known_answer_vector_sha256": sha256_file(vector_path),
+    }
+
+
+def write_outputs(
+    config: dict,
+    results: list[Result],
+    output_dir: Path,
+    provenance: dict,
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     generated = datetime.now(timezone.utc).isoformat()
+    checks = [result for result in results if result.status != "BENCHMARK"]
+    benchmarks = [result for result in results if result.status == "BENCHMARK"]
+    summary = {
+        "checks_total": len(checks),
+        "checks_passed": sum(result.status == "PASS" for result in checks),
+        "checks_failed": sum(result.status == "FAIL" for result in checks),
+        "checks_errored": sum(result.status == "ERROR" for result in checks),
+        "benchmarks_completed": len(benchmarks),
+        "results_total": len(results),
+        "total_duration_seconds": sum(result.duration_seconds for result in results),
+    }
     payload = {
         "generated_utc": generated,
-        "warning": "Passing results do not establish cryptographic security.",
+        "warning": (
+            "Passing results demonstrate only the measured behavior. "
+            "They do not establish cryptographic security."
+        ),
+        "provenance": provenance,
         "configuration": config,
-        "baseline_unittest": baseline,
-        "summary": {
-            "pass": sum(r.status == "PASS" for r in results),
-            "fail": sum(r.status == "FAIL" for r in results),
-            "error": sum(r.status == "ERROR" for r in results),
-            "total": len(results),
-            "total_duration_seconds": sum(r.duration_seconds for r in results),
-        },
+        "summary": summary,
         "results": [asdict(result) for result in results],
     }
-    (output_dir / "research_test_results.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (output_dir / "research_test_results.json").write_text(
+        json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+    )
 
-    with (output_dir / "research_test_results.csv").open("w", newline="", encoding="utf-8") as handle:
+    with (output_dir / "research_test_results.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
         writer = csv.writer(handle)
-        writer.writerow(["category", "name", "status", "trials", "duration_seconds", "metrics", "note"])
+        writer.writerow([
+            "category", "name", "status", "trials",
+            "duration_seconds", "metrics", "note",
+        ])
         for result in results:
-            writer.writerow([result.category, result.name, result.status, result.trials, f"{result.duration_seconds:.6f}", json.dumps(result.metrics, sort_keys=True), result.note])
+            writer.writerow([
+                result.category, result.name, result.status, result.trials,
+                f"{result.duration_seconds:.6f}",
+                json.dumps(result.metrics, sort_keys=True), result.note,
+            ])
 
-    summary = payload["summary"]
     lines = [
         "# BrisartSecurityResearch Test Results",
         "",
         f"Generated UTC: `{generated}`",
         f"Profile: `{config['profile_name']}`",
         "",
-        "> Passing these tests demonstrates only the measured behavior. It does not establish cryptographic security, production suitability, or resistance to cryptanalysis.",
+        "> Passing checks demonstrate only the measured behavior. They do not "
+        "establish cryptographic security, production suitability, or resistance "
+        "to cryptanalysis.",
+        "",
+        "## Provenance",
+        "",
+        f"- Python: `{provenance['python_implementation']} "
+        f"{provenance['python_version']}`",
+        f"- Operating system: `{provenance['operating_system']} "
+        f"{provenance['platform_release']}`",
+        f"- Source revision: `{provenance['source_revision'] or 'unavailable'}`",
+        f"- Uncommitted changes present: "
+        f"`{str(provenance['source_tree_dirty']).lower()}`",
+        f"- Configuration SHA-256: "
+        f"`{provenance['configuration_sha256'] or 'unavailable'}`",
+        f"- Known-answer vector SHA-256: "
+        f"`{provenance['known_answer_vector_sha256'] or 'unavailable'}`",
         "",
         "## Summary",
         "",
-        f"- Research checks: {summary['total']}",
-        f"- Passed: {summary['pass']}",
-        f"- Failed: {summary['fail']}",
-        f"- Errors: {summary['error']}",
-        f"- Research-suite runtime: {summary['total_duration_seconds']:.3f} seconds",
+        f"- Checks: {summary['checks_total']}",
+        f"- Passed: {summary['checks_passed']}",
+        f"- Failed: {summary['checks_failed']}",
+        f"- Errors: {summary['checks_errored']}",
+        f"- Benchmarks completed: {summary['benchmarks_completed']}",
+        f"- Total runtime: {summary['total_duration_seconds']:.3f} seconds",
+        "",
+        "## Detailed Results",
+        "",
     ]
-    if baseline:
-        lines += [
-            f"- Original unittest checks: {baseline['tests_run']}",
-            f"- Original unittest failures: {baseline['failures']}",
-            f"- Original unittest errors: {baseline['errors']}",
-            f"- Original unittest runtime: {baseline['duration_seconds']:.3f} seconds",
-        ]
-    lines += ["", "## Detailed Results", ""]
     for result in results:
         lines += [
             f"### {result.status}: {result.category} / {result.name}",
@@ -357,21 +462,34 @@ def write_outputs(config: dict, results: list[Result], output_dir: Path, baselin
             f"- Note: {result.note}",
             "",
         ]
-    (output_dir / "research_test_results.md").write_text("\n".join(lines), encoding="utf-8")
+    (output_dir / "research_test_results.md").write_text(
+        "\n".join(lines), encoding="utf-8"
+    )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run configurable Brisart cryptographic research tests.")
-    parser.add_argument("--config", default="research_test_config.json", help="Path to JSON configuration.")
-    parser.add_argument("--baseline-json", default="results/baseline_unittest_results.json", help="Optional baseline unittest result JSON.")
+    parser = argparse.ArgumentParser(
+        description="Run configurable Brisart cryptographic research tests."
+    )
+    parser.add_argument(
+        "--config",
+        default="research_test_config.json",
+        help="Path to JSON configuration.",
+    )
     args = parser.parse_args()
-    config = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    config_path = Path(args.config).resolve()
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     suite = Suite(config)
     suite.execute()
-    baseline_path = Path(args.baseline_json)
-    baseline = json.loads(baseline_path.read_text(encoding="utf-8")) if baseline_path.exists() else None
-    write_outputs(config, suite.results, Path(config["output_directory"]), baseline)
-    return 1 if any(result.status != "PASS" for result in suite.results) else 0
+    write_outputs(
+        config,
+        suite.results,
+        Path(config["output_directory"]),
+        build_provenance(config_path),
+    )
+    return 1 if any(
+        result.status in {"FAIL", "ERROR"} for result in suite.results
+    ) else 0
 
 
 if __name__ == "__main__":

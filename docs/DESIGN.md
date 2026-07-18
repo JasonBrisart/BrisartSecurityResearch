@@ -1,12 +1,12 @@
 # BRC1 Design Notes
 
-Identifier:
+## Identifier
 
 ```text
 BRC1-ARX-SPONGE-ETM
 ```
 
-Envelope version:
+## Envelope version
 
 ```text
 1
@@ -19,7 +19,7 @@ Envelope version:
 
 The implementation combines a custom permutation, sponge-style hashing, custom keyed authentication, subkey derivation, deterministic random generation, counter-based stream generation, and an encrypt-then-authenticate envelope.
 
-All major functions use explicit domain strings to separate purposes.
+Major functions use explicit domain strings to separate purposes.
 
 ## Permutation
 
@@ -43,17 +43,17 @@ The current rotation values are:
 The sponge-style construction uses:
 
 - a 32-byte rate
-- domain-dependent initial state processing
+- domain-dependent initial-state processing
 - a padding marker of `0x80`
 - zero padding
-- an eight-byte big-endian bit length
+- an eight-byte big-endian message bit length
 - a default output length of 32 bytes
 
-Output lengths from 1 through 1024 bytes are accepted by the implementation.
+The implementation accepts output lengths from 1 through 1024 bytes.
 
 ## Keyed authentication
 
-The keyed authentication construction uses separate inner and outer hash domains. It frames the key and message, creates a 64-byte inner value, and hashes the framed key, inner value, and message again for the requested output length.
+The keyed authentication construction uses separate inner and outer hash domains. The implementation frames the key and message, creates a 64-byte inner value, and hashes the framed key, framed inner value, and framed message for the requested output length.
 
 This is a custom construction and has not been established as equivalent to HMAC or another standardized MAC.
 
@@ -79,7 +79,7 @@ Per-purpose subkeys are produced from:
 - a framed message salt
 - a framed purpose label
 
-The envelope currently derives separate keys for encryption and authentication.
+The envelope derives separate keys for encryption and authentication.
 
 ## Deterministic random-bit generator
 
@@ -91,7 +91,7 @@ The DRBG requires:
 
 The DRBG maintains mutable state, a counter, request and byte limits, a continuous repeated-block check, reseeding support, and a destroyed state.
 
-The DRBG expands caller-provided seed material. It does not create entropy.
+The DRBG expands caller-provided seed material. It does not create entropy. In the current implementation, a valid reseed can reactivate a destroyed generator.
 
 ## Stream generation
 
@@ -114,15 +114,15 @@ tag
 
 Binary values are encoded as canonical lowercase hexadecimal strings.
 
-For encryption:
+### Encryption
 
 1. The caller provides a master key, plaintext, context string, and generator.
-2. The generator produces a 32-byte message salt and 32-byte nonce using distinct additional-input labels.
+2. The generator produces a 32-byte message salt and a 32-byte nonce using distinct additional-input labels.
 3. Separate encryption and authentication keys are derived from the master key and message salt.
 4. The plaintext is XORed with the generated stream.
 5. The algorithm identifier, version, context, salt, nonce, and ciphertext are framed and authenticated.
 
-For decryption:
+### Decryption
 
 1. The implementation validates the exact envelope field set, algorithm, version, encodings, field lengths, and ciphertext size.
 2. The same encryption and authentication subkeys are derived.
