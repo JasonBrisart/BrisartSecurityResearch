@@ -10,7 +10,7 @@ from brisart_security_primitives import (
 )
 
 
-ALGORITHM = "BRC1-ARX-SPONGE-ETM"
+ALGORITHM = "BSR1-ARX-SPONGE-ETM"
 VERSION = 1
 SALT_BYTES = 32
 NONCE_BYTES = 32
@@ -57,18 +57,18 @@ def encrypt(master_key: bytes, plaintext: bytes, context: str, rng) -> dict:
     context_bytes = _context_bytes(context)
     message_salt = rng.generate(
         SALT_BYTES,
-        b"BRC1/envelope-v2/salt/" + context_bytes,
+        b"BSR1/envelope-v2/salt/" + context_bytes,
     )
     nonce = rng.generate(
         NONCE_BYTES,
-        b"BRC1/envelope-v2/nonce/" + context_bytes,
+        b"BSR1/envelope-v2/nonce/" + context_bytes,
     )
     if message_salt == nonce:
         raise BrisartEnvelopeError(
             "generator produced equal salt and nonce values"
         )
-    encryption_key = derive_subkey(master_key, message_salt, b"BRC1/encryption")
-    authentication_key = derive_subkey(master_key, message_salt, b"BRC1/authentication")
+    encryption_key = derive_subkey(master_key, message_salt, b"BSR1/encryption")
+    authentication_key = derive_subkey(master_key, message_salt, b"BSR1/authentication")
     ciphertext = xor_bytes(plaintext, stream_bytes(encryption_key, nonce, len(plaintext)))
     tag = keyed_mac(
         authentication_key,
@@ -111,8 +111,8 @@ def decrypt(master_key: bytes, envelope: dict, context: str) -> bytes:
         raise BrisartEnvelopeError("ciphertext exceeds the size limit")
 
     context_bytes = _context_bytes(context)
-    encryption_key = derive_subkey(master_key, message_salt, b"BRC1/encryption")
-    authentication_key = derive_subkey(master_key, message_salt, b"BRC1/authentication")
+    encryption_key = derive_subkey(master_key, message_salt, b"BSR1/encryption")
+    authentication_key = derive_subkey(master_key, message_salt, b"BSR1/authentication")
     expected_tag = keyed_mac(
         authentication_key,
         _tag_input(context_bytes, message_salt, nonce, ciphertext),

@@ -119,7 +119,7 @@ def _initial_state(domain: bytes) -> list[int]:
     return state
 
 
-def sponge_hash(message: bytes, output_bytes: int = 32, domain: bytes = b"BRC1/hash") -> bytes:
+def sponge_hash(message: bytes, output_bytes: int = 32, domain: bytes = b"BSR1/hash") -> bytes:
     if output_bytes <= 0 or output_bytes > 1024:
         raise BrisartPrimitiveError("output length must be between 1 and 1024 bytes")
     state = _initial_state(domain)
@@ -143,8 +143,8 @@ def sponge_hash(message: bytes, output_bytes: int = 32, domain: bytes = b"BRC1/h
 def keyed_mac(key: bytes, message: bytes, output_bytes: int = 32) -> bytes:
     if not isinstance(key, bytes) or len(key) < 16:
         raise BrisartPrimitiveError("MAC key must contain at least sixteen bytes")
-    inner = sponge_hash(frame(key) + frame(message), 64, b"BRC1/mac/inner")
-    return sponge_hash(frame(key) + frame(inner) + frame(message), output_bytes, b"BRC1/mac/outer")
+    inner = sponge_hash(frame(key) + frame(message), 64, b"BSR1/mac/inner")
+    return sponge_hash(frame(key) + frame(inner) + frame(message), output_bytes, b"BSR1/mac/outer")
 
 
 def derive_password_key(password: str, salt: bytes, iterations: int = 120_000, output_bytes: int = 32) -> bytes:
@@ -156,7 +156,7 @@ def derive_password_key(password: str, salt: bytes, iterations: int = 120_000, o
         raise BrisartPrimitiveError("iteration count is below the research minimum")
 
     password_bytes = password.encode("utf-8")
-    state = sponge_hash(frame(password_bytes) + frame(salt), 64, b"BRC1/kdf/start")
+    state = sponge_hash(frame(password_bytes) + frame(salt), 64, b"BSR1/kdf/start")
     for index in range(iterations):
         state = sponge_hash(
             frame(password_bytes)
@@ -164,9 +164,9 @@ def derive_password_key(password: str, salt: bytes, iterations: int = 120_000, o
             + index.to_bytes(8, "big")
             + frame(state),
             64,
-            b"BRC1/kdf/round",
+            b"BSR1/kdf/round",
         )
-    return sponge_hash(frame(state) + frame(salt), output_bytes, b"BRC1/kdf/final")
+    return sponge_hash(frame(state) + frame(salt), output_bytes, b"BSR1/kdf/final")
 
 
 def derive_subkey(master_key: bytes, salt: bytes, purpose: bytes, output_bytes: int = 32) -> bytes:

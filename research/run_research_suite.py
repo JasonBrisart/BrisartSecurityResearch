@@ -111,8 +111,8 @@ class Suite:
         equal = 0
         for index in range(count):
             message = self.bytes(self.random.randint(0, 256))
-            a = sponge_hash(message, domain=b"BRC1/test/domain/a/" + index.to_bytes(4, "big"))
-            b = sponge_hash(message, domain=b"BRC1/test/domain/b/" + index.to_bytes(4, "big"))
+            a = sponge_hash(message, domain=b"BSR1/test/domain/a/" + index.to_bytes(4, "big"))
+            b = sponge_hash(message, domain=b"BSR1/test/domain/b/" + index.to_bytes(4, "big"))
             equal += a == b
         return equal == 0, {"equal_cross_domain_outputs": equal}, "Checks observed separation for explicit test domains."
 
@@ -174,7 +174,7 @@ class Suite:
         mismatches = 0
         for index in range(cfg["determinism_trials"]):
             seed = self.bytes(64)
-            label = b"BRC1 intermediate determinism" + index.to_bytes(4, "big")
+            label = b"BSR1 intermediate determinism" + index.to_bytes(4, "big")
             additional = b"request/" + index.to_bytes(4, "big")
             a = BrisartDRBG(seed, label).generate(cfg["output_bytes_per_trial"], additional)
             b = BrisartDRBG(seed, label).generate(cfg["output_bytes_per_trial"], additional)
@@ -190,7 +190,7 @@ class Suite:
             seed_b = bytearray(seed_a)
             bit = self.random.randrange(len(seed_b) * 8)
             seed_b[bit // 8] ^= 1 << (bit % 8)
-            label = b"BRC1 intermediate sensitivity" + index.to_bytes(4, "big")
+            label = b"BSR1 intermediate sensitivity" + index.to_bytes(4, "big")
             additional = b"request/" + index.to_bytes(4, "big")
             a = BrisartDRBG(bytes(seed_a), label).generate(cfg["output_bytes_per_trial"], additional)
             b = BrisartDRBG(bytes(seed_b), label).generate(cfg["output_bytes_per_trial"], additional)
@@ -209,7 +209,7 @@ class Suite:
             total_bytes += size
             seed = hashlib.sha512(b"roundtrip" + index.to_bytes(8, "big")).digest()
             context = f"research-suite:roundtrip:{index}"
-            envelope = encrypt(master, plaintext, context, BrisartDRBG(seed, b"BRC1 research suite roundtrip"))
+            envelope = encrypt(master, plaintext, context, BrisartDRBG(seed, b"BSR1 research suite roundtrip"))
             failures += decrypt(master, envelope, context) != plaintext
         return failures == 0, {"round_trip_failures": failures, "total_plaintext_bytes": total_bytes}, "Behavioral correctness test across deterministic randomized lengths."
 
@@ -222,7 +222,7 @@ class Suite:
             plaintext = self.bytes(self.random.randint(1, min(1024, cfg["maximum_random_plaintext_bytes"])))
             seed = hashlib.sha512(b"tamper" + index.to_bytes(8, "big")).digest()
             context = f"research-suite:tamper:{index}"
-            envelope = encrypt(master, plaintext, context, BrisartDRBG(seed, b"BRC1 research suite tamper"))
+            envelope = encrypt(master, plaintext, context, BrisartDRBG(seed, b"BSR1 research suite tamper"))
             field = fields[index % len(fields)]
             raw = bytearray.fromhex(envelope[field])
             raw[self.random.randrange(len(raw))] ^= 1 << self.random.randrange(8)
@@ -240,7 +240,7 @@ class Suite:
         accepted = 0
         for index in range(count):
             seed = hashlib.sha512(b"context" + index.to_bytes(8, "big")).digest()
-            envelope = encrypt(master, self.bytes(64), f"context:{index}", BrisartDRBG(seed, b"BRC1 context rejection test"))
+            envelope = encrypt(master, self.bytes(64), f"context:{index}", BrisartDRBG(seed, b"BSR1 context rejection test"))
             try:
                 decrypt(master, envelope, f"context:{index}:wrong")
                 accepted += 1
@@ -256,7 +256,7 @@ class Suite:
             wrong = self.bytes(32)
             seed = hashlib.sha512(b"wrong-key" + index.to_bytes(8, "big")).digest()
             context = f"wrong-key:{index}"
-            envelope = encrypt(master, self.bytes(64), context, BrisartDRBG(seed, b"BRC1 wrong key rejection"))
+            envelope = encrypt(master, self.bytes(64), context, BrisartDRBG(seed, b"BSR1 wrong key rejection"))
             try:
                 decrypt(wrong, envelope, context)
                 accepted += 1
@@ -282,7 +282,7 @@ class Suite:
         rows = []
         for size, repetitions in zip(cfg["envelope_message_sizes"], cfg["envelope_repetitions"]):
             plaintext = self.bytes(size)
-            generator = BrisartDRBG(hashlib.sha512(b"perf" + size.to_bytes(8, "big")).digest(), b"BRC1 performance test")
+            generator = BrisartDRBG(hashlib.sha512(b"perf" + size.to_bytes(8, "big")).digest(), b"BSR1 performance test")
             started = time.perf_counter()
             for index in range(repetitions):
                 context = f"performance:{size}:{index}"

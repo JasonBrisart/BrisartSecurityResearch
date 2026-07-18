@@ -1,4 +1,4 @@
-"""Behavioral and boundary tests for the experimental BRC1 implementation.
+"""Behavioral and boundary tests for the experimental BSR1 implementation.
 
 These tests verify implemented behavior and fail-closed input handling. Passing
 results do not establish cryptographic security or production suitability.
@@ -45,7 +45,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
         cls.seed = bytes(range(64))
         cls.plaintext = "Custom cipher research: café archive".encode("utf-8")
 
-    def new_generator(self, label: bytes = b"BRC1 test instance") -> BrisartDRBG:
+    def new_generator(self, label: bytes = b"BSR1 test instance") -> BrisartDRBG:
         return BrisartDRBG(self.seed, label)
 
     def new_envelope(self) -> dict:
@@ -93,7 +93,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
     def test_wrong_key_fails(self) -> None:
         wrong_key = BrisartDRBG(
             bytes(reversed(self.seed)),
-            b"BRC1 wrong key test",
+            b"BSR1 wrong key test",
         ).generate(32, b"wrong key generation")
         with self.assertRaises(BrisartEnvelopeError):
             decrypt(wrong_key, self.new_envelope(), self.context)
@@ -151,13 +151,13 @@ class BrisartCipherResearchTests(unittest.TestCase):
         second_seed[0] ^= 1
         second = BrisartDRBG(
             bytes(second_seed),
-            b"BRC1 test instance",
+            b"BSR1 test instance",
         ).generate(96, b"deterministic test")
         self.assertNotEqual(first, second)
 
     def test_drbg_rejects_short_seed(self) -> None:
         with self.assertRaises(BrisartDRBGError):
-            BrisartDRBG(b"short", b"BRC1 short seed test")
+            BrisartDRBG(b"short", b"BSR1 short seed test")
 
     def test_encryption_requires_explicit_generator(self) -> None:
         with self.assertRaises(BrisartEnvelopeError):
@@ -169,16 +169,16 @@ class BrisartCipherResearchTests(unittest.TestCase):
 
     def test_drbg_requires_additional_input(self) -> None:
         with self.assertRaises(BrisartDRBGError):
-            self.new_generator(b"BRC1 additional input").generate(32, b"")
+            self.new_generator(b"BSR1 additional input").generate(32, b"")
 
     def test_destroyed_drbg_fails_closed(self) -> None:
-        generator = self.new_generator(b"BRC1 destroy test")
+        generator = self.new_generator(b"BSR1 destroy test")
         generator.destroy()
         with self.assertRaises(BrisartDRBGError):
             generator.generate(32, b"after destroy")
 
     def test_reseed_changes_output(self) -> None:
-        generator = self.new_generator(b"BRC1 reseed test")
+        generator = self.new_generator(b"BSR1 reseed test")
         before = generator.generate(64, b"before reseed")
         generator.reseed(bytes(reversed(self.seed)), b"reseed event")
         after = generator.generate(64, b"after reseed")
@@ -338,7 +338,7 @@ class BrisartCipherResearchTests(unittest.TestCase):
 
     def test_drbg_rejects_non_byte_seed(self) -> None:
         with self.assertRaises(BrisartDRBGError):
-            BrisartDRBG("not-bytes", b"BRC1 seed type test")
+            BrisartDRBG("not-bytes", b"BSR1 seed type test")
 
     def test_drbg_rejects_non_byte_personalization(self) -> None:
         with self.assertRaises(BrisartDRBGError):
@@ -357,20 +357,20 @@ class BrisartCipherResearchTests(unittest.TestCase):
             self.new_generator().reseed(b"short", b"reseed event")
 
     def test_drbg_reseed_after_destroy_reactivates_generator(self) -> None:
-        generator = self.new_generator(b"BRC1 destroy reseed test")
+        generator = self.new_generator(b"BSR1 destroy reseed test")
         generator.destroy()
         generator.reseed(bytes(reversed(self.seed)), b"reseed after destroy")
         output = generator.generate(32, b"request after reseed")
         self.assertEqual(len(output), 32)
 
     def test_drbg_rejects_request_crossing_byte_limit(self) -> None:
-        generator = self.new_generator(b"BRC1 byte limit test")
+        generator = self.new_generator(b"BSR1 byte limit test")
         generator._generated_bytes = MAX_BYTES_BEFORE_RESEED - 16
         with self.assertRaises(BrisartDRBGError):
             generator.generate(17, b"cross byte limit")
 
     def test_drbg_rejects_request_at_reseed_interval(self) -> None:
-        generator = self.new_generator(b"BRC1 interval test")
+        generator = self.new_generator(b"BSR1 interval test")
         generator._requests = RESEED_INTERVAL
         with self.assertRaises(BrisartDRBGError):
             generator.generate(32, b"cross request interval")

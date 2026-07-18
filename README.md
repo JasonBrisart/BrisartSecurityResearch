@@ -24,7 +24,7 @@ The design prioritizes readability, auditability, reproducibility, and offline i
 ## Status
 
 - **Maturity:** Alpha
-- **Research implementation:** BRC1
+- **Research implementation:** BSR1
 - **Intended use:** Controlled research and offline prototypes
 - **Production ready:** No
 - **Independently reviewed:** No

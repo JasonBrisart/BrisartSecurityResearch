@@ -1,9 +1,9 @@
-# BRC1 Design Notes
+# BSR1 Design Notes
 
 ## Identifier
 
 ```text
-BRC1-ARX-SPONGE-ETM
+BSR1-ARX-SPONGE-ETM
 ```
 
 ## Envelope version

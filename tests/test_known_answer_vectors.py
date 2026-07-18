@@ -40,7 +40,7 @@ class KnownAnswerVectorTests(unittest.TestCase):
         plaintext = bytes.fromhex(vector["plaintext_hex"])
         envelope = vector["value"]
         self.assertEqual(decrypt(key, envelope, vector["context"]), plaintext)
-        regenerated = encrypt(key, plaintext, vector["context"], BrisartDRBG(bytes(range(64)), b"BRC1 known answer vector"))
+        regenerated = encrypt(key, plaintext, vector["context"], BrisartDRBG(bytes(range(64)), b"BSR1 known answer vector"))
         self.assertEqual(regenerated, envelope)
 
 

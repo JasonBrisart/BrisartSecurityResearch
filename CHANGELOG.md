@@ -6,6 +6,11 @@ This repository is experimental research software. A changelog entry records imp
 
 ## Unreleased
 
+### Changed
+
+- Renamed the experimental algorithm identifier from `BRC1-ARX-SPONGE-ETM` to `BSR1-ARX-SPONGE-ETM` to align with BrisartSecurityResearch.
+- Regenerated known-answer vectors for the renamed BSR1 domains and envelope identifier.
+
 ### Documentation
 
 - Reorganized project documentation around the current repository structure.

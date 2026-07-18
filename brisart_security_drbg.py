@@ -32,7 +32,7 @@ class BrisartDRBG:
         initial = sponge_hash(
             frame(seed) + frame(personalization),
             128,
-            b"BRC1/drbg-v2/instantiate",
+            b"BSR1/drbg-v2/instantiate",
         )
         self._state = bytearray(initial)
         self._counter = 0
@@ -64,7 +64,7 @@ class BrisartDRBG:
             + frame(additional_input)
             + self._counter.to_bytes(16, "big"),
             128,
-            b"BRC1/drbg-v2/preupdate",
+            b"BSR1/drbg-v2/preupdate",
         )
 
     def _next_block(self) -> bytes:
@@ -72,7 +72,7 @@ class BrisartDRBG:
         block = sponge_hash(
             frame(bytes(self._state)) + counter,
             64,
-            b"BRC1/drbg-v2/output",
+            b"BSR1/drbg-v2/output",
         )
         if self._previous_block is not None and block == self._previous_block:
             self.destroy()
@@ -85,7 +85,7 @@ class BrisartDRBG:
             + frame(block)
             + counter,
             128,
-            b"BRC1/drbg-v2/postupdate",
+            b"BSR1/drbg-v2/postupdate",
         )
         self._state[:] = next_state
         self._previous_block = block
@@ -125,7 +125,7 @@ class BrisartDRBG:
             + frame(seed)
             + frame(additional_input),
             128,
-            b"BRC1/drbg-v2/reseed",
+            b"BSR1/drbg-v2/reseed",
         )
         self._counter = 0
         self._requests = 0
