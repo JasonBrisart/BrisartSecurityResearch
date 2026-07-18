@@ -1,9 +1,17 @@
-"""Regression checks for known_answer_vectors.json."""
+"""Regression checks for known_answer_vectors.json.
+
+Envelope generation now uses fresh operating-system entropy. The envelope KAT
+injects an all-zero entropy value strictly inside this test so that the frozen
+vector continues to exercise deterministic envelope logic. Production entropy
+validation is tested separately in test_entropy_hardening.py.
+"""
 
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import brisart_security_envelope as envelope_module
 from brisart_security_drbg import BrisartDRBG
 from brisart_security_envelope import ALGORITHM, VERSION, decrypt, encrypt
 from brisart_security_primitives import keyed_mac, sponge_hash, stream_bytes
@@ -62,15 +70,22 @@ class KnownAnswerVectorTests(unittest.TestCase):
         key = bytes.fromhex(vector["master_key_hex"])
         plaintext = bytes.fromhex(vector["plaintext_hex"])
         envelope = vector["value"]
-
         self.assertEqual(decrypt(key, envelope, vector["context"]), plaintext)
 
-        regenerated = encrypt(
-            key,
-            plaintext,
-            vector["context"],
-            BrisartDRBG(bytes(range(64)), b"BSR2 known answer vector"),
-        )
+        with patch.object(
+            envelope_module,
+            "system_entropy",
+            side_effect=(b"\x00" * 32, b"\x00" * 32),
+        ):
+            regenerated = encrypt(
+                key,
+                plaintext,
+                vector["context"],
+                BrisartDRBG(
+                    bytes(range(64)),
+                    b"BSR2 known answer vector",
+                ),
+            )
         self.assertEqual(regenerated, envelope)
 
 
