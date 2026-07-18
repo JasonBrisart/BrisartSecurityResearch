@@ -3,36 +3,64 @@
 Dependency-free, pure-Python research into custom cryptographic constructions for offline and air-gapped environments.
 
 > [!WARNING]
-> **Experimental research only.** This repository contains custom cryptographic constructions that have not undergone independent cryptanalysis, formal verification, certification, or production security review. Do not use this project as the sole protection for credentials, biometric data, personal information, sensitive research, access-control decisions, or other valuable data.
+> **Experimental research only.** This repository contains a custom cryptographic construction that has not undergone independent cryptanalysis, formal verification, certification, or production security review. Passing the included tests does not establish cryptographic security. Do not use this project as the sole protection for credentials, personal information, sensitive research, access-control decisions, recovery material, or other valuable data.
 
 ## Purpose
 
-BrisartSecurityResearch explores a small, inspectable cryptographic construction implemented with base Python and no third-party packages.
+BrisartSecurityResearch is a small, inspectable research implementation built with the Python standard library and no third-party packages. The repository explores:
 
-The current repository focuses only on the experimental encryption stack:
-
-- a custom 1024-bit permutation
-- a custom sponge-style hash construction
-- a custom keyed authentication construction
-- a custom password-derived key experiment
+- a 1024-bit custom permutation
+- a sponge-style hash construction
+- a keyed authentication construction
+- a password-derived key experiment
 - purpose-separated subkey derivation
-- a custom deterministic random-bit generator
-- custom stream generation
-- an encrypt-then-authenticate envelope format
-- deterministic behavioral and tamper tests
+- a deterministic random-bit generator
+- counter-based stream generation
+- a versioned encrypt-then-authenticate envelope
+- deterministic regression, tamper, statistical, and performance tests
 
-## Repository Layout
+The design prioritizes readability, auditability, reproducibility, and offline inspection. Those properties are useful for research, but they are not substitutes for established cryptographic analysis.
+
+## Status
+
+- **Maturity:** Alpha
+- **Intended use:** Controlled research and offline prototypes
+- **Production ready:** No
+- **Independently reviewed:** No
+- **Security certified:** No
+
+## Repository layout
 
 ```text
 BrisartSecurityResearch/
-├── brisart_security_primitives.py
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+├── docs/
+│   ├── DESIGN.md
+│   └── TESTING.md
+├── results/
+│   ├── research_test_results.csv
+│   ├── research_test_results.json
+│   └── research_test_results.md
+├── tests/
+│   ├── known_answer_vectors.json
+│   ├── test_brisart_security.py
+│   └── test_known_answer_vectors.py
+├── .gitignore
 ├── brisart_security_drbg.py
 ├── brisart_security_envelope.py
-├── test_brisart_security.py
-└── README.md
+├── brisart_security_primitives.py
+├── CHANGELOG.md
+├── generate_test_vectors.py
+├── LICENSE
+├── README.md
+├── research_test_config.json
+├── run_research_suite.py
+└── SECURITY.md
 ```
 
-## Component Overview
+## Core files
 
 ### `brisart_security_primitives.py`
 
@@ -40,88 +68,63 @@ Contains the custom permutation, sponge construction, keyed authentication const
 
 ### `brisart_security_drbg.py`
 
-Contains the custom deterministic random-bit generator used to expand caller-provided seed material.
-
-The generator does not create entropy. The same seed, personalization, additional input, and call sequence reproduce the same output.
+Contains the deterministic generator used to expand caller-provided seed material. The generator does not create entropy. Output depends on the supplied seed, personalization, additional input, and call sequence.
 
 ### `brisart_security_envelope.py`
 
-Contains the versioned authenticated envelope. The current construction derives separate encryption and authentication keys, generates a stream, transforms plaintext with XOR, authenticates the envelope, and verifies authentication before returning plaintext.
+Contains the versioned authenticated envelope. It derives separate encryption and authentication subkeys, transforms plaintext with a generated stream, authenticates the envelope, and verifies authentication before returning plaintext.
 
-### `test_brisart_security.py`
-
-Contains deterministic behavioral tests for round trips, wrong keys, wrong contexts, field mutation, generator lifecycle behavior, reseeding, empty plaintext, encoding, and avalanche observation.
-
-Passing these tests demonstrates only the behavior covered by the tests. It does not establish cryptographic security.
-
-## Running the Tests
+## Running the tests
 
 From the repository root:
 
-```powershell
-python test_brisart_security.py
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+python run_research_suite.py --config research_test_config.json
 ```
 
-## Entropy Boundary
+The first command runs behavioral and frozen known-answer regression tests. The second runs the configurable research suite and writes reports into `results/`.
 
-The custom deterministic generator expands caller-provided seed material but cannot manufacture unpredictable physical entropy.
+Do not regenerate known-answer vectors during an ordinary test run. See [`docs/TESTING.md`](docs/TESTING.md) for the complete workflow.
 
-Any real security claim would depend on the quality, unpredictability, and secrecy of externally supplied seed material. This repository does not provide a validated entropy source.
+## Research results
 
-## Known Limitations
+The `results/` directory contains the latest committed research-suite output in Markdown, JSON, and CSV formats. These reports document observed behavior only. They do not demonstrate collision resistance, preimage resistance, stream indistinguishability, forgery resistance, side-channel resistance, or production suitability.
 
-The project has not established:
+## Entropy boundary
 
-- collision resistance
-- preimage resistance
-- differential resistance
-- rotational resistance
-- algebraic resistance
-- related-key resistance
-- authentication-forgery resistance
-- stream indistinguishability
-- password-guessing resistance
-- entropy-source validation
-- state-compromise resistance
-- side-channel resistance
-- production security suitability
+The custom deterministic generator expands caller-provided seed material but cannot manufacture unpredictable physical entropy. Any real security property depends on the quality, unpredictability, secrecy, and lifecycle of externally supplied seed material.
 
-Python also does not guarantee complete erasure of immutable secret values from process memory.
-
-## Intended Use
-
-Appropriate uses include:
+## Appropriate uses
 
 - controlled cryptographic research
 - source-code inspection
-- synthetic test data
+- synthetic or disposable data
 - offline workflow prototypes
-- parser and tamper-testing research
+- parser and tamper-handling research
+- regression testing of the experimental format
 - educational analysis of custom constructions
 
-## Unsupported Use
+## Unsupported uses
 
 Do not rely on this repository as the sole protection for:
 
 - passwords or credentials
 - API keys or access tokens
-- biometric templates
+- biometric or identity records
 - recovery secrets
-- personal information
-- sensitive research records
+- personal or regulated information
+- valuable unpublished research
 - production authorization
-- safety-critical or regulated systems
+- safety-critical systems
 
-## Project Status
+## Documentation
 
-```text
-Status: Experimental research
-Maturity: Alpha
-Production ready: No
-Independently reviewed: No
-Security certified: No
-```
+- [`docs/DESIGN.md`](docs/DESIGN.md) describes the implemented construction.
+- [`docs/TESTING.md`](docs/TESTING.md) explains the test layers and vector policy.
+- [`SECURITY.md`](SECURITY.md) defines the project security posture.
+- [`CHANGELOG.md`](CHANGELOG.md) records project-level changes.
 
-## License
+## Licensing
 
-Licensing and ecosystem policy are governed by the applicable terms in the Brisart licensing repository. Licensing permission does not imply production security suitability.
+This project is part of the Brisart ecosystem. The current licensing terms and ecosystem policies are maintained in the BrisartLicensing repository. See [`LICENSE`](LICENSE).
