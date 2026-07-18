@@ -1,4 +1,4 @@
-"""Generate deterministic known-answer vectors for BSR1 regression tests.
+"""Generate deterministic known-answer vectors for BSR2 regression tests.
 
 Run this only when intentionally changing the algorithm or envelope format.
 Do not run it before ordinary regression testing.
@@ -23,17 +23,17 @@ def main() -> None:
     key = bytes(range(32))
     seed = bytes(range(64))
     nonce = bytes(reversed(range(32)))
-    message = b"BrisartSecurityResearch known-answer vector v1"
-    context = "known-answer-vector:v1"
+    message = b"BrisartSecurityResearch known-answer vector v2"
+    context = "known-answer-vector:v2"
 
-    generator = BrisartDRBG(seed, b"BSR1 known answer vector")
+    generator = BrisartDRBG(seed, b"BSR2 known answer vector")
     envelope = encrypt(key, message, context, generator)
     if decrypt(key, envelope, context) != message:
         raise RuntimeError("known-answer envelope failed its own round trip")
 
     vectors = {
         "warning": "Regression vectors freeze behavior; they do not establish cryptographic security.",
-        "format_version": 1,
+        "format_version": 2,
         "hash": {
             "message_hex": message.hex(),
             "digest_hex": sponge_hash(message).hex(),
@@ -51,12 +51,12 @@ def main() -> None:
         },
         "drbg": {
             "seed_hex": seed.hex(),
-            "personalization_hex": b"BSR1 known answer DRBG".hex(),
+            "personalization_hex": b"BSR2 known answer DRBG".hex(),
             "additional_input_hex": b"first request".hex(),
             "length": 128,
             "output_hex": BrisartDRBG(
                 seed,
-                b"BSR1 known answer DRBG",
+                b"BSR2 known answer DRBG",
             ).generate(128, b"first request").hex(),
         },
         "envelope": {

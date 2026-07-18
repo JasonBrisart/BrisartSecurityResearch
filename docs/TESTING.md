@@ -1,8 +1,16 @@
 # Testing Guide
 
-BrisartSecurityResearch uses three testing layers. Each layer answers a different question, and none establishes cryptographic security.
+BrisartSecurityResearch uses four testing layers.
 
-## 1. Behavioral and boundary tests
+Each layer answers a different question.
+
+Passing results establish only the behavior that was actually tested.
+
+Passing results do not establish cryptographic security.
+
+---
+
+## 1. Behavioral And Boundary Tests
 
 File:
 
@@ -10,28 +18,75 @@ File:
 tests/test_brisart_security.py
 ```
 
-Run from the repository root:
+Run:
 
 ```bash
 python -m unittest -v tests.test_brisart_security
 ```
 
-The suite covers implemented behavior including:
+This suite covers:
 
-- encryption and decryption round trips
-- randomized envelope output
-- mutation rejection for salt, nonce, ciphertext, and tag
-- wrong-key and wrong-context rejection
-- malformed envelope fields
-- empty plaintext
-- hexadecimal encoding and decoding
-- deterministic hash behavior
-- a basic avalanche observation
-- DRBG determinism, reseeding, destruction, and lifecycle behavior
+- Round-trip encryption/decryption
+- Randomized envelopes
+- Tamper rejection
+- Wrong-key rejection
+- Wrong-context rejection
+- Envelope validation
+- Primitive boundary checks
+- Generator validation
+- DRBG lifecycle behavior
 
-The suite also checks fail-closed boundaries for malformed envelopes, invalid primitive parameters, canonical hexadecimal validation, envelope size limits, DRBG request limits, and DRBG lifecycle boundaries.
+### Generator Validation
 
-## 2. Frozen known-answer regression tests
+The suite verifies that encryption rejects:
+
+- Generators without a callable `generate()` method
+- Salt values that are not bytes
+- Nonce values that are not bytes
+- Salt values that are not exactly 32 bytes
+- Nonce values that are not exactly 32 bytes
+- Equal salt and nonce values
+
+### Deterministic Restart Demonstration
+
+The suite also demonstrates that two fresh DRBG instances created with identical inputs reproduce the same first envelope sequence.
+
+This records an operational risk.
+
+It is not a desired randomness property.
+
+---
+
+## 2. Parameter Reproducibility Tests
+
+File:
+
+```text
+tests/test_bsr2_parameters.py
+```
+
+Run:
+
+```bash
+python -m unittest -v tests.test_bsr2_parameters
+```
+
+These tests regenerate BSR2 parameters and compare them with the values embedded in:
+
+```text
+brisart_security_primitives.py
+```
+
+They also verify:
+
+- Parameter counts
+- Uniqueness requirements
+- Rotation bounds
+- Permutation shape
+
+---
+
+## 3. Frozen Known-Answer Regression Tests
 
 Files:
 
@@ -46,21 +101,50 @@ Run:
 python -m unittest -v tests.test_known_answer_vectors
 ```
 
-The JSON file contains expected outputs for the hash, MAC, stream generator, DRBG, and complete envelope. The test verifies that the current implementation still produces those exact outputs.
+The vector file contains expected outputs for:
 
-### Vector policy
+- Hashing
+- MAC generation
+- Stream generation
+- DRBG output
+- Complete envelope generation
 
-Do not regenerate vectors before an ordinary test run. Regenerating first would replace the expected answers and could hide an accidental algorithm change.
+The suite also verifies:
 
-Run the vector generator only when intentionally changing the algorithm or envelope format:
+```text
+Format version: 2
+Algorithm: BSR2-ARX-SPONGE-ETM
+Envelope version: 2
+```
+
+### Vector Policy
+
+Do not regenerate vectors before an ordinary regression run.
+
+Doing so could replace expected answers and hide an unintended algorithm change.
+
+Only regenerate vectors when intentionally changing:
+
+- The algorithm
+- The envelope format
+- The expected outputs
+
+Regeneration command:
 
 ```bash
 python tests/generate_test_vectors.py
 ```
 
-Review vector changes separately. An intentional vector change should be accompanied by a version decision, documentation update, changelog entry, and fresh research results.
+Any intentional vector change should be accompanied by:
 
-## 3. Configurable research suite
+- Documentation updates
+- Changelog updates
+- Version review
+- Fresh research results
+
+---
+
+## 4. Configurable Research Suite
 
 Files:
 
@@ -72,10 +156,16 @@ research/research_test_config.json
 Run:
 
 ```bash
+python research/run_research_suite.py
+```
+
+or
+
+```bash
 python research/run_research_suite.py --config research/research_test_config.json
 ```
 
-The suite writes:
+Generated reports:
 
 ```text
 results/research_test_results.md
@@ -83,48 +173,115 @@ results/research_test_results.json
 results/research_test_results.csv
 ```
 
-The configuration controls trial counts, message sizes, deterministic seed, statistical boundaries, output sample size, and benchmark repetitions.
+The configuration controls:
 
-The generated JSON and Markdown reports record:
+- Trial counts
+- Message sizes
+- Statistical boundaries
+- Deterministic seed
+- Output sample sizes
+- Benchmark repetitions
 
-- Python version and implementation
-- operating system and platform release
-- Git source revision when available
-- configuration SHA-256
-- known-answer-vector SHA-256
-- check and benchmark summaries
-- per-result metrics and runtime
+Performance measurements are labeled:
 
-Performance measurements are labeled `BENCHMARK` and are not included in the passed-check count.
+```text
+BENCHMARK
+```
 
-## Complete local test sequence
+and are excluded from the pass/fail count.
+
+---
+
+## Complete Validation Sequence
+
+Run from the repository root.
+
+### Compile
+
+```bash
+python -m py_compile \
+    brisart_security_primitives.py \
+    brisart_security_drbg.py \
+    brisart_security_envelope.py \
+    research/run_research_suite.py \
+    tools/generate_bsr2_parameters.py \
+    tests/generate_test_vectors.py \
+    tests/test_brisart_security.py \
+    tests/test_bsr2_parameters.py \
+    tests/test_known_answer_vectors.py
+```
+
+### Unit Tests
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
-python research/run_research_suite.py --config research/research_test_config.json
 ```
 
-## Interpreting results
+### Research Suite
 
-Behavioral and known-answer passes establish only that the tested implementation behaved as expected for the supplied cases.
+```bash
+python research/run_research_suite.py
+```
 
-Research-suite observations can expose obvious regressions, repeated outputs, poor diffusion, malformed-envelope acceptance, or unexpected local statistics. They do not establish:
+Success is determined by:
 
-- collision resistance
-- preimage resistance
-- pseudorandomness
-- stream indistinguishability
-- authentication-forgery resistance
-- password-guessing resistance
-- side-channel resistance
-- production security
+```text
+OK
+```
 
-Performance measurements are informational, machine-dependent benchmarks. They are not security passes.
+from unittest and the absence of:
 
-## Continuous integration
+```text
+FAIL
+ERROR
+```
 
-The GitHub Actions workflow compiles the source, research, and test files, runs the unittest modules, and runs the configurable research suite. The workflow must not regenerate known-answer vectors.
+from the research suite.
 
-## Updating committed results
+Do not rely on a fixed test count because the suite may grow over time.
 
-Commit fresh reports after a deliberate implementation or configuration change. The report, configuration, source revision, and known-answer vectors should describe the same implementation state.
+---
+
+## Interpreting Results
+
+Passing tests establish only that the implementation behaved as expected for the supplied inputs.
+
+Passing tests do not establish:
+
+- Collision resistance
+- Preimage resistance
+- Pseudorandomness
+- Stream indistinguishability
+- Authentication-forgery resistance
+- Side-channel resistance
+- Production security
+
+---
+
+## Continuous Integration
+
+The GitHub Actions workflow:
+
+1. Compiles source files
+2. Compiles research files
+3. Compiles tool files
+4. Compiles test files
+5. Runs unittest discovery
+6. Runs the research suite
+
+The workflow does not regenerate known-answer vectors.
+
+---
+
+## Updating Committed Results
+
+Commit fresh research reports after a deliberate implementation or configuration change.
+
+The following should describe the same implementation state:
+
+- Source code
+- Configuration
+- Research results
+- Known-answer vectors
+- Fixed parameters
+- Changelog entries

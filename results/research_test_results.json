@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-07-18T19:55:29.138244+00:00",
+  "generated_utc": "2026-07-18T22:00:24.782457+00:00",
   "warning": "Passing results demonstrate only the measured behavior. They do not establish cryptographic security.",
   "provenance": {
     "python_version": "3.14.6",
@@ -7,11 +7,11 @@
     "operating_system": "Windows",
     "platform_release": "11",
     "source_revision": null,
-    "source_tree_dirty": false,
-    "configuration_path": "research_test_config.json",
+    "source_tree_dirty": null,
+    "configuration_path": "C:\\Users\\Jason\\OneDrive\\Documents\\GitHub\\BrisartSecurityResearch\\research\\research_test_config.json",
     "configuration_sha256": "853d680e709b40e1fd66c107bac020ffa7c8a4e625f68dd29e1f4e860ca69c71",
     "known_answer_vector_path": "tests/known_answer_vectors.json",
-    "known_answer_vector_sha256": "19e9576b9d04c37e17a7c2568753d36b45b7dd8072e63df5eacd70f67ca927f5"
+    "known_answer_vector_sha256": "93904aca493410cfed43be9c083d82484c8ecc558e1836861155cfeda6beeb3c"
   },
   "configuration": {
     "profile_name": "intermediate",
@@ -86,7 +86,7 @@
     "checks_errored": 0,
     "benchmarks_completed": 2,
     "results_total": 15,
-    "total_duration_seconds": 65.91020609991392
+    "total_duration_seconds": 173.16857300000265
   },
   "results": [
     {
@@ -94,12 +94,12 @@
       "name": "single-bit avalanche",
       "status": "PASS",
       "trials": 128,
-      "duration_seconds": 1.1127827999880537,
+      "duration_seconds": 1.5952076999819838,
       "metrics": {
-        "mean_changed_bit_ratio": 0.494537353515625,
-        "minimum_changed_bit_ratio": 0.41796875,
-        "maximum_changed_bit_ratio": 0.58984375,
-        "population_standard_deviation": 0.029962092306469092
+        "mean_changed_bit_ratio": 0.498779296875,
+        "minimum_changed_bit_ratio": 0.40234375,
+        "maximum_changed_bit_ratio": 0.59375,
+        "population_standard_deviation": 0.03168471290625661
       },
       "note": "Observational diffusion test; not a proof of resistance to cryptanalysis."
     },
@@ -108,7 +108,7 @@
       "name": "collision observation",
       "status": "PASS",
       "trials": 1000,
-      "duration_seconds": 5.760505100013688,
+      "duration_seconds": 8.223993199993856,
       "metrics": {
         "observed_collisions": 0,
         "unique_digests": 1000
@@ -120,7 +120,7 @@
       "name": "domain separation",
       "status": "PASS",
       "trials": 64,
-      "duration_seconds": 0.7164469999843277,
+      "duration_seconds": 1.0160491000278853,
       "metrics": {
         "equal_cross_domain_outputs": 0
       },
@@ -131,7 +131,7 @@
       "name": "message tamper sensitivity",
       "status": "PASS",
       "trials": 128,
-      "duration_seconds": 6.286378499993589,
+      "duration_seconds": 17.767080900026485,
       "metrics": {
         "undetected_message_mutations": 0
       },
@@ -142,7 +142,7 @@
       "name": "labeled input separation",
       "status": "PASS",
       "trials": 64,
-      "duration_seconds": 2.392120699980296,
+      "duration_seconds": 7.989608899981249,
       "metrics": {
         "equal_labeled_outputs": 0
       },
@@ -153,7 +153,7 @@
       "name": "unique nonce blocks",
       "status": "PASS",
       "trials": 256,
-      "duration_seconds": 3.4554301000316627,
+      "duration_seconds": 11.193956200033426,
       "metrics": {
         "duplicate_blocks": 0,
         "unique_blocks": 256
@@ -165,11 +165,11 @@
       "name": "bit balance and serial correlation",
       "status": "PASS",
       "trials": 8192,
-      "duration_seconds": 1.7405660999938846,
+      "duration_seconds": 5.715175500023179,
       "metrics": {
         "sample_bytes": 8192,
-        "ones_ratio": 0.499603271484375,
-        "adjacent_byte_serial_correlation": 0.01366547073769677
+        "ones_ratio": 0.4994659423828125,
+        "adjacent_byte_serial_correlation": 0.004756641269248001
       },
       "note": "Simple output statistics are diagnostic only."
     },
@@ -178,7 +178,7 @@
       "name": "determinism",
       "status": "PASS",
       "trials": 64,
-      "duration_seconds": 4.71009949996369,
+      "duration_seconds": 15.309120899997652,
       "metrics": {
         "determinism_mismatches": 0
       },
@@ -189,10 +189,10 @@
       "name": "single-bit seed sensitivity",
       "status": "PASS",
       "trials": 64,
-      "duration_seconds": 4.6893006000318564,
+      "duration_seconds": 15.223873500013724,
       "metrics": {
         "equal_outputs": 0,
-        "mean_changed_bit_ratio": 0.500762939453125
+        "mean_changed_bit_ratio": 0.5001220703125
       },
       "note": "Sensitivity observation only."
     },
@@ -201,7 +201,7 @@
       "name": "randomized round trips",
       "status": "PASS",
       "trials": 16,
-      "duration_seconds": 4.839341699960642,
+      "duration_seconds": 8.247460999991745,
       "metrics": {
         "round_trip_failures": 0,
         "total_plaintext_bytes": 3931
@@ -213,7 +213,7 @@
       "name": "binary field tamper rejection",
       "status": "PASS",
       "trials": 64,
-      "duration_seconds": 15.948695099970791,
+      "duration_seconds": 40.00833549996605,
       "metrics": {
         "undetected_envelope_mutations": 0
       },
@@ -224,7 +224,7 @@
       "name": "wrong context rejection",
       "status": "PASS",
       "trials": 16,
-      "duration_seconds": 2.875926000007894,
+      "duration_seconds": 7.1652099000057206,
       "metrics": {
         "wrong_context_acceptances": 0
       },
@@ -235,7 +235,7 @@
       "name": "wrong key rejection",
       "status": "PASS",
       "trials": 16,
-      "duration_seconds": 2.8650019000051543,
+      "duration_seconds": 7.373745799995959,
       "metrics": {
         "wrong_key_acceptances": 0
       },
@@ -246,23 +246,23 @@
       "name": "hash throughput",
       "status": "BENCHMARK",
       "trials": 56,
-      "duration_seconds": 0.5663704000180587,
+      "duration_seconds": 1.9723091999767348,
       "metrics": {
         "measurements": [
           {
             "message_bytes": 32,
             "repetitions": 50,
-            "bytes_per_second": 10965.716371931268
+            "bytes_per_second": 3207.483057823371
           },
           {
             "message_bytes": 1024,
             "repetitions": 5,
-            "bytes_per_second": 30435.627751650434
+            "bytes_per_second": 8993.042687697616
           },
           {
             "message_bytes": 8192,
             "repetitions": 1,
-            "bytes_per_second": 32943.059416119286
+            "bytes_per_second": 9086.491486107561
           }
         ]
       },
@@ -273,23 +273,23 @@
       "name": "envelope round-trip throughput",
       "status": "BENCHMARK",
       "trials": 13,
-      "duration_seconds": 7.951240599970333,
+      "duration_seconds": 24.367445699987,
       "metrics": {
         "measurements": [
           {
             "message_bytes": 32,
             "repetitions": 10,
-            "round_trip_bytes_per_second": 177.33810734568428
+            "round_trip_bytes_per_second": 52.72752396193569
           },
           {
             "message_bytes": 1024,
             "repetitions": 2,
-            "round_trip_bytes_per_second": 1442.330513088296
+            "round_trip_bytes_per_second": 475.4972858768633
           },
           {
             "message_bytes": 8192,
             "repetitions": 1,
-            "round_trip_bytes_per_second": 1742.2187453594076
+            "round_trip_bytes_per_second": 589.213946734305
           }
         ]
       },
