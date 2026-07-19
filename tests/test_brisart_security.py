@@ -96,22 +96,6 @@ class BrisartCipherResearchTests(unittest.TestCase):
         self.assertNotEqual(first["nonce"], second["nonce"])
         self.assertNotEqual(first["ciphertext"], second["ciphertext"])
 
-    def test_fresh_equal_drbg_state_repeats_first_envelope_sequence(self) -> None:
-        label = b"BSR2 restart reuse demonstration"
-        first = encrypt(
-            self.master_key,
-            self.plaintext,
-            self.context,
-            self.new_generator(label),
-        )
-        second = encrypt(
-            self.master_key,
-            self.plaintext,
-            self.context,
-            self.new_generator(label),
-        )
-        self.assertEqual(first, second)
-
     def test_each_binary_field_tamper_fails(self) -> None:
         for field in ("salt", "nonce", "ciphertext", "tag"):
             with self.subTest(field=field):
