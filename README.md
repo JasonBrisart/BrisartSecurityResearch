@@ -14,6 +14,7 @@ Research implementation: BSR2
 Algorithm identifier:     BSR2-ARX-SPONGE-ETM
 Envelope version:         2
 Maturity:                 Alpha
+Research focus:           Architecture and experimental validation
 Production ready:         No
 Independently reviewed:   No
 Security certified:       No
@@ -74,7 +75,30 @@ The envelope layer combines both during encryption.
 
 BrisartSecurityResearch is a small, inspectable research implementation built with the Python standard library and no third-party packages.
 
-BSR2 includes:
+## BSR2 Research Components
+
+### Deterministic Components
+
+- Custom 1024-bit permutation
+- Sponge-style hash construction
+- Custom keyed authentication construction
+- Password-derived key experiment
+- Purpose-separated subkey derivation
+- Custom deterministic random-bit generator
+- Counter-based stream generation
+
+### Operating-System Entropy Boundary
+
+- Fresh entropy acquisition
+- Entropy validation
+- Envelope diversification
+
+### Authenticated Envelope Layer
+
+- Versioned encrypt-then-authenticate envelope
+- Context binding
+- Authentication verification
+- Metadata validation
 
 - A custom 1024-bit permutation
 - A sponge-style hash construction
@@ -124,6 +148,44 @@ Alpha 3 does not guarantee uniqueness if an attacker reproduces the complete mac
 - Operating-system randomness state
 
 No process-local Python implementation can guarantee protection from a complete rollback of every relevant state source.
+
+## Entropy Boundary
+
+BSR2's custom DRBG is deterministic.
+
+The DRBG expands caller-provided seed material but does not create
+entropy.
+
+Fresh entropy is obtained through:
+
+```python
+secrets.token_bytes()
+```
+
+implemented in:
+
+```text
+brisart_security_entropy.py
+```
+
+The authenticated envelope combines deterministic DRBG outputs with
+fresh operating-system entropy contributions.
+
+Alpha 3 introduced entropy diversification:
+
+```text
+final salt  = DRBG salt  XOR OS entropy
+final nonce = DRBG nonce XOR OS entropy
+```
+
+This reduces deterministic restart risks by preventing recreation of
+final envelope values from DRBG state alone during normal operation.
+
+The entropy boundary is intentionally separate from the custom
+deterministic construction.
+
+Software cannot create unpredictable physical entropy from
+deterministic code alone.
 
 ## Security Model
 
