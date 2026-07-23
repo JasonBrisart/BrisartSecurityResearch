@@ -89,7 +89,7 @@ Transparency and auditability are core goals. They do not substitute for establi
 The deterministic construction is implemented primarily in:
 
 - brisart_security_primitives.py
-- brisart_security_drbg.py
+- [`brisart_security_drbg.py`](brisart_security_drbg.py)
 
 ### Operating-System Entropy Boundary
 
@@ -194,7 +194,7 @@ brisart_security_envelope.py
 The corresponding source files are:
 
 - brisart_security_primitives.py
-- brisart_security_drbg.py
+- [`brisart_security_drbg.py`](brisart_security_drbg.py)
 - brisart_security_entropy.py
 - brisart_security_envelope.py
 
@@ -228,6 +228,7 @@ BrisartSecurityResearch/
 │   ├── test_brisart_security.py
 │   ├── test_bsr2_parameters.py
 │   ├── test_entropy_hardening.py
+│   ├── test_envelope_hardening.py
 │   └── test_known_answer_vectors.py
 ├── tools/
 │   └── generate_bsr2_parameters.py
@@ -259,7 +260,7 @@ Contains:
 - A comparison routine without an intentional early return
 - Canonical lowercase hexadecimal encoding and decoding
 
-### brisart_security_drbg.py
+### [`brisart_security_drbg.py`](brisart_security_drbg.py)
 
 Contains the custom deterministic generator.
 
@@ -335,9 +336,13 @@ tag
 
 Run all commands from the repository root.
 
+The continuous-integration configuration is available in:
+
+- [`.github/workflows/tests.yml`](.github/workflows/tests.yml)
+
 ### Compile
 
-#### Linux, macOS, or a POSIX-compatible shell
+#### Linux, macOS, or a POSIX-Compatible Shell
 
 ```bash
 python -m py_compile \
@@ -351,13 +356,14 @@ python -m py_compile \
     tests/test_brisart_security.py \
     tests/test_bsr2_parameters.py \
     tests/test_entropy_hardening.py \
+    tests/test_envelope_hardening.py \
     tests/test_known_answer_vectors.py
 ```
 
 #### Windows Command Prompt or PowerShell
 
 ```bat
-python -m py_compile brisart_security_primitives.py brisart_security_drbg.py brisart_security_entropy.py brisart_security_envelope.py research/run_research_suite.py tools/generate_bsr2_parameters.py tests/generate_test_vectors.py tests/test_brisart_security.py tests/test_bsr2_parameters.py tests/test_entropy_hardening.py tests/test_known_answer_vectors.py
+python -m py_compile brisart_security_primitives.py brisart_security_drbg.py brisart_security_entropy.py brisart_security_envelope.py research/run_research_suite.py tools/generate_bsr2_parameters.py tests/generate_test_vectors.py tests/test_brisart_security.py tests/test_bsr2_parameters.py tests/test_entropy_hardening.py tests/test_envelope_hardening.py tests/test_known_answer_vectors.py
 ```
 
 ### Run Unit And Regression Tests
@@ -372,11 +378,23 @@ The required ending is:
 OK
 ```
 
+The primary behavioral and boundary tests are located in:
+
+- tests/test_brisart_security.py
+
 ### Run The Research Suite
 
 ```bash
 python research/run_research_suite.py
 ```
+
+The research suite is implemented in:
+
+- research/run_research_suite.py
+
+Its default configuration is stored in:
+
+- research/research_test_config.json
 
 The research suite writes:
 
@@ -402,6 +420,25 @@ These tests verify the implemented mitigation.
 They do not validate the operating-system entropy source.
 
 They do not establish the security of the underlying custom cryptographic construction.
+
+## Envelope-Hardening Tests
+
+tests/test_envelope_hardening.py provides focused boundary tests for defensive envelope hardening.
+
+The tests cover:
+
+- Generator-failure wrapping
+- Oversized encryption and decryption contexts
+- Context values that cannot be encoded as valid UTF-8
+- Non-text algorithm identifiers
+- Invalid envelope-version types
+- Oversized ciphertext rejection before hexadecimal decoding
+- Invalid fixed-field lengths before hexadecimal decoding
+- Unchanged behavior for valid envelopes
+
+These tests validate failure behavior and resource boundaries.
+
+They do not establish cryptographic security.
 
 ## Known-Answer Vector Policy
 
@@ -443,15 +480,43 @@ Any intentional vector change should be reviewed together with:
 
 ## Parameter Provenance
 
-docs/BSR2_PARAMETER_GENERATION.md documents the deterministic parameter generator and public seed used to produce the fixed BSR2 parameters.
+[`docs/BSR2_PARAMETER_GENERATION.md`](docs/BSR2_PARAMETER_GENERATION.md) documents the deterministic parameter generator and public seed used to produce the fixed BSR2 parameters.
 
-tools/generate_bsr2_parameters.py contains the parameter-generation tool.
+The parameter-generation tool is located at:
 
-tests/test_bsr2_parameters.py verifies that regenerated parameters match the values embedded in brisart_security_primitives.py.
+- tools/generate_bsr2_parameters.py
+
+Parameter reproducibility is verified by:
+
+- tests/test_bsr2_parameters.py
+
+The regenerated parameters are compared with the values embedded in:
+
+- brisart_security_primitives.py
 
 Reproducible parameter generation documents provenance.
 
 It does not establish cryptographic strength.
+
+## Research Configuration And Results
+
+The configurable research suite is implemented in:
+
+- research/run_research_suite.py
+
+Its default configuration is stored in:
+
+- research/research_test_config.json
+
+Committed research results are available in:
+
+- results/research_test_results.md
+- results/research_test_results.json
+- results/research_test_results.csv
+
+The committed reports document observed behavior and local benchmarks for the implementation state under which they were generated.
+
+They do not establish cryptographic security, production suitability, or resistance to cryptanalysis.
 
 ## Compatibility
 
@@ -513,11 +578,12 @@ See [`SECURITY.md`](SECURITY.md) for the complete project security posture.
 
 ## Documentation
 
-- docs/DESIGN.md describes the implemented construction and security boundaries.
-- docs/BSR2_PARAMETER_GENERATION.md documents fixed-parameter generation.
-- docs/TESTING.md explains validation layers and vector policy.
+- [`docs/DESIGN.md`](docs/DESIGN.md) describes the implemented construction and security boundaries.
+- [`docs/BSR2_PARAMETER_GENERATION.md`](docs/BSR2_PARAMETER_GENERATION.md) documents fixed-parameter generation.
+- [`docs/TESTING.md`](docs/TESTING.md) explains validation layers and vector policy.
 - [`SECURITY.md`](SECURITY.md) defines the project security posture.
 - [`CHANGELOG.md`](CHANGELOG.md) records release history and the Alpha 3 entropy hardening.
+- [`.github/workflows/tests.yml`](.github/workflows/tests.yml) defines the continuous-integration test workflow.
 
 ## Licensing
 
@@ -525,4 +591,4 @@ This project is part of the Brisart ecosystem.
 
 Current licensing terms and ecosystem policies are maintained through the BrisartLicensing project.
 
-See LICENSE.
+See [`LICENSE`](LICENSE).
