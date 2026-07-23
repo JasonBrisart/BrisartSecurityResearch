@@ -8,19 +8,21 @@ Dependency-free, pure-Python research into custom cryptographic constructions fo
 ## Current Status
 
 ```text
-Project release:          0.3.0-alpha
-Release name:             BSR2 Alpha 3
-Research implementation: BSR2
-Algorithm identifier:     BSR2-ARX-SPONGE-ETM
-Envelope version:         2
-Maturity:                 Alpha
-Research focus:           Architecture and experimental validation
-Production ready:         No
-Independently reviewed:   No
-Security certified:       No
+Project release:           0.3.0-alpha
+Release name:              BSR2 Alpha 3
+Research implementation:   BSR2
+Algorithm identifier:      BSR2-ARX-SPONGE-ETM
+Envelope version:          2
+Maturity:                  Alpha
+Research focus:            Architecture and experimental validation
+Production ready:          No
+Independently reviewed:    No
+Security certified:        No
 ```
 
-The project release, cryptographic construction, and envelope version are separate identifiers. Release `0.3.0-alpha` remains BSR2 and continues to use envelope version `2`.
+The project release, cryptographic construction, and envelope version are separate identifiers.
+
+Release `0.3.0-alpha` remains BSR2 and continues to use envelope version `2`.
 
 ## Architecture Overview
 
@@ -30,17 +32,13 @@ BSR2 is intentionally divided into three separate layers:
 2. Operating-system entropy boundary
 3. Authenticated envelope layer
 
-The deterministic layer performs transformation, hashing,
-authentication, key derivation, and deterministic expansion.
+The deterministic layer performs transformation, hashing, authentication, key derivation, and deterministic expansion.
 
-The operating-system entropy layer provides fresh entropy through
-Python's standard-library interfaces.
+The operating-system entropy layer provides fresh entropy through Python's standard-library interfaces.
 
-The envelope layer combines both components to produce authenticated
-ciphertext containers.
+The authenticated envelope layer combines deterministic BSR2 outputs with fresh operating-system entropy contributions to produce authenticated ciphertext containers.
 
-The operating-system entropy source remains external to the custom
-deterministic construction.
+The operating-system entropy source remains external to the custom deterministic construction.
 
 ```text
                 +----------------------+
@@ -52,13 +50,11 @@ deterministic construction.
                 |      BSR2 DRBG       |
                 +----------+-----------+
                            |
-                           |
                            v
               +------------------------+
               |  BSR2 Envelope Layer   |
               +-----------+------------+
                           ^
-                          |
                           |
             +-------------+--------------+
             |   OS Entropy Boundary      |
@@ -66,14 +62,17 @@ deterministic construction.
             +----------------------------+
 ```
 
-The deterministic construction and operating-system entropy boundary are
-independent components.
+The deterministic construction and operating-system entropy boundary are independent components.
 
-The envelope layer combines both during encryption.
+The authenticated envelope combines both during encryption.
 
 ## Purpose
 
 BrisartSecurityResearch is a small, inspectable research implementation built with the Python standard library and no third-party packages.
+
+The project is designed for controlled experimentation, implementation review, reproducible testing, and offline or air-gapped research workflows.
+
+Transparency and auditability are core goals. They do not substitute for established cryptographic analysis, independent review, or standardized cryptographic constructions.
 
 ## BSR2 Research Components
 
@@ -87,36 +86,48 @@ BrisartSecurityResearch is a small, inspectable research implementation built wi
 - Custom deterministic random-bit generator
 - Counter-based stream generation
 
+The deterministic construction is implemented primarily in:
+
+- brisart_security_primitives.py
+- brisart_security_drbg.py
+
 ### Operating-System Entropy Boundary
 
-- Fresh entropy acquisition
-- Entropy validation
-- Envelope diversification
+- Fresh entropy acquisition through the Python standard library
+- Entropy sample validation
+- Envelope salt and nonce diversification
+- Failure handling through a dedicated entropy error type
+
+The operating-system entropy boundary is implemented in:
+
+- brisart_security_entropy.py
 
 ### Authenticated Envelope Layer
 
 - Versioned encrypt-then-authenticate envelope
+- Separate encryption and authentication keys
 - Context binding
-- Authentication verification
-- Metadata validation
+- Authentication verification before plaintext return
+- Exact field-set and metadata validation
+- Salt and nonce diversification
 
-- A custom 1024-bit permutation
-- A sponge-style hash construction
-- A custom keyed authentication construction
-- A password-derived key experiment
-- Purpose-separated subkey derivation
-- A custom deterministic random-bit generator
-- Counter-based stream generation
-- A versioned encrypt-then-authenticate envelope
-- A separate operating-system entropy boundary for envelope diversification
+The authenticated envelope layer is implemented in:
 
-The core construction and committed fixed parameters are repository-defined. The parameter generator is included for reproducibility. The operating-system entropy source is intentionally external to the custom deterministic construction.
+- brisart_security_envelope.py
 
-These properties support transparency and auditability. They do not substitute for established cryptographic analysis.
+The core construction and committed fixed parameters are repository-defined.
+
+The parameter generator is included for reproducibility:
+
+- tools/generate_bsr2_parameters.py
+
+The operating-system entropy source is intentionally external to the custom deterministic construction.
 
 ## Alpha 3 Entropy Hardening
 
-BSR2's custom DRBG is deterministic. Recreating the same seed, personalization, context, master key, and initial request sequence can recreate the same raw DRBG output.
+BSR2's custom DRBG is deterministic.
+
+Recreating the same seed, personalization, context, master key, and initial request sequence can recreate the same raw DRBG output.
 
 Alpha 3 changes how envelope salt and nonce values are produced:
 
@@ -125,7 +136,11 @@ final salt  = custom DRBG salt  XOR fresh operating-system entropy
 final nonce = custom DRBG nonce XOR fresh operating-system entropy
 ```
 
-Fresh entropy is requested through Python's standard-library `secrets.token_bytes()` interface.
+Fresh entropy is requested through Python's standard-library `secrets.token_bytes()` interface and is obtained through:
+
+- brisart_security_entropy.py
+
+The authenticated envelope combines deterministic DRBG outputs with fresh operating-system entropy contributions.
 
 This prevents recreation of the custom DRBG state by itself from recreating the final envelope salt, nonce, derived encryption key, stream, ciphertext, and authentication tag during normal operation.
 
@@ -134,6 +149,7 @@ This prevents recreation of the custom DRBG state by itself from recreating the 
 - Reuse of the same custom DRBG seed by itself
 - Reuse of the same custom DRBG personalization by itself
 - Recreation of the same custom DRBG state by itself
+- Recreation of the same raw deterministic salt and nonce contributions by itself
 - The demonstrated known-plaintext XOR recovery caused by recreating the same stream
 
 ### What Alpha 3 Does Not Guarantee
@@ -149,47 +165,15 @@ Alpha 3 does not guarantee uniqueness if an attacker reproduces the complete mac
 
 No process-local Python implementation can guarantee protection from a complete rollback of every relevant state source.
 
-## Entropy Boundary
+The custom DRBG expands caller-provided seed material but does not create entropy.
 
-BSR2's custom DRBG is deterministic.
+The operating-system entropy boundary remains intentionally separate from the custom deterministic construction.
 
-The DRBG expands caller-provided seed material but does not create
-entropy.
-
-Fresh entropy is obtained through:
-
-```python
-secrets.token_bytes()
-```
-
-implemented in:
-
-```text
-brisart_security_entropy.py
-```
-
-The authenticated envelope combines deterministic DRBG outputs with
-fresh operating-system entropy contributions.
-
-Alpha 3 introduced entropy diversification:
-
-```text
-final salt  = DRBG salt  XOR OS entropy
-final nonce = DRBG nonce XOR OS entropy
-```
-
-This reduces deterministic restart risks by preventing recreation of
-final envelope values from DRBG state alone during normal operation.
-
-The entropy boundary is intentionally separate from the custom
-deterministic construction.
-
-Software cannot create unpredictable physical entropy from
-deterministic code alone.
+Software cannot create unpredictable physical entropy from deterministic code alone.
 
 ## Security Model
 
-BSR2 separates deterministic cryptographic research code from the external entropy boundary.
+BSR2 separates deterministic cryptographic research code from the external operating-system entropy boundary.
 
 ```text
 brisart_security_primitives.py
@@ -203,11 +187,22 @@ brisart_security_entropy.py
     Fresh operating-system entropy through the Python standard library
 
 brisart_security_envelope.py
-    Validated encrypt-then-authenticate envelope combining the DRBG and
-    operating-system entropy inputs
+    Validated encrypt-then-authenticate envelope combining deterministic
+    DRBG contributions with operating-system entropy contributions
 ```
 
-The entropy module is not a custom entropy source. Software cannot create unpredictable physical entropy from deterministic code alone.
+The corresponding source files are:
+
+- brisart_security_primitives.py
+- brisart_security_drbg.py
+- brisart_security_entropy.py
+- brisart_security_envelope.py
+
+The entropy module is not a custom entropy source.
+
+The module requests entropy from the operating system through Python's standard-library interface and validates the returned sample before use.
+
+The custom deterministic construction remains inspectable and reproducible, while final production envelope diversification depends on an external operating-system entropy source.
 
 ## Repository Layout
 
@@ -249,7 +244,7 @@ BrisartSecurityResearch/
 
 ## Core Implementation
 
-### `brisart_security_primitives.py`
+### brisart_security_primitives.py
 
 Contains:
 
@@ -264,7 +259,7 @@ Contains:
 - A comparison routine without an intentional early return
 - Canonical lowercase hexadecimal encoding and decoding
 
-### `brisart_security_drbg.py`
+### brisart_security_drbg.py
 
 Contains the custom deterministic generator.
 
@@ -282,9 +277,11 @@ Output before reseed:       16 MiB
 Requests before reseed:    100,000
 ```
 
-The DRBG expands caller-provided seed material. The DRBG does not create entropy.
+The DRBG expands caller-provided seed material.
 
-### `brisart_security_entropy.py`
+The DRBG does not create entropy.
+
+### brisart_security_entropy.py
 
 Provides the external entropy boundary used during envelope encryption.
 
@@ -292,14 +289,17 @@ The module:
 
 - Requests bytes through `secrets.token_bytes()`
 - Requires a positive integer request length
-- Checks the returned type and length
+- Checks the returned type
+- Checks the returned length
 - Rejects an all-zero sample
 - Rejects a sample equal to the immediately preceding process-local sample
 - Raises `BrisartEntropyError` when acquisition or validation fails
 
-The immediate duplicate check is a catastrophic-failure detector. It is not an entropy estimate and does not validate the operating-system entropy source.
+The immediate duplicate check is a catastrophic-failure detector.
 
-### `brisart_security_envelope.py`
+It is not an entropy estimate and does not validate the operating-system entropy source.
+
+### brisart_security_envelope.py
 
 Contains the authenticated BSR2 envelope.
 
@@ -314,17 +314,17 @@ ciphertext
 tag
 ```
 
-Encryption:
+#### Encryption
 
 1. Validates the master key, plaintext, context, and caller-supplied DRBG.
 2. Requests deterministic salt and nonce contributions from the custom DRBG.
 3. Requests independent fresh entropy contributions from the operating system.
-4. Combines each pair using XOR.
+4. Combines each deterministic contribution with its corresponding operating-system entropy contribution using XOR.
 5. Derives separate encryption and authentication keys.
 6. Generates the stream and transforms the plaintext.
 7. Authenticates the algorithm, version, context, salt, nonce, and ciphertext.
 
-Decryption:
+#### Decryption
 
 1. Validates the exact field set, metadata types, format identifier, encoding, field lengths, context size, and ciphertext size.
 2. Derives the encryption and authentication keys from the stored message salt.
@@ -337,8 +337,27 @@ Run all commands from the repository root.
 
 ### Compile
 
+#### Linux, macOS, or a POSIX-compatible shell
+
 ```bash
-python -m py_compile     brisart_security_primitives.py     brisart_security_drbg.py     brisart_security_entropy.py     brisart_security_envelope.py     research/run_research_suite.py     tools/generate_bsr2_parameters.py     tests/generate_test_vectors.py     tests/test_brisart_security.py     tests/test_bsr2_parameters.py     tests/test_entropy_hardening.py     tests/test_known_answer_vectors.py
+python -m py_compile \
+    brisart_security_primitives.py \
+    brisart_security_drbg.py \
+    brisart_security_entropy.py \
+    brisart_security_envelope.py \
+    research/run_research_suite.py \
+    tools/generate_bsr2_parameters.py \
+    tests/generate_test_vectors.py \
+    tests/test_brisart_security.py \
+    tests/test_bsr2_parameters.py \
+    tests/test_entropy_hardening.py \
+    tests/test_known_answer_vectors.py
+```
+
+#### Windows Command Prompt or PowerShell
+
+```bat
+python -m py_compile brisart_security_primitives.py brisart_security_drbg.py brisart_security_entropy.py brisart_security_envelope.py research/run_research_suite.py tools/generate_bsr2_parameters.py tests/generate_test_vectors.py tests/test_brisart_security.py tests/test_bsr2_parameters.py tests/test_entropy_hardening.py tests/test_known_answer_vectors.py
 ```
 
 ### Run Unit And Regression Tests
@@ -361,17 +380,15 @@ python research/run_research_suite.py
 
 The research suite writes:
 
-```text
-results/research_test_results.md
-results/research_test_results.json
-results/research_test_results.csv
-```
+- results/research_test_results.md
+- results/research_test_results.json
+- results/research_test_results.csv
 
 Research-suite observations and benchmarks do not establish cryptographic security.
 
 ## Entropy-Hardening Tests
 
-`tests/test_entropy_hardening.py` verifies the specific Alpha 3 mitigation, including:
+tests/test_entropy_hardening.py verifies the specific Alpha 3 mitigation, including:
 
 - Identical custom DRBG initialization does not repeat final envelope values during normal operation
 - The demonstrated known-plaintext XOR recovery no longer recovers the second plaintext
@@ -380,13 +397,29 @@ Research-suite observations and benchmarks do not establish cryptographic securi
 - Consecutive duplicate samples are rejected
 - Controlled deterministic entropy injection remains restricted to tests
 
-These tests verify the implemented mitigation. They do not validate the operating-system entropy source.
+These tests verify the implemented mitigation.
+
+They do not validate the operating-system entropy source.
+
+They do not establish the security of the underlying custom cryptographic construction.
 
 ## Known-Answer Vector Policy
 
-Known-answer vectors freeze deterministic behavior. Do not regenerate them before an ordinary regression run.
+Known-answer vectors freeze deterministic behavior.
 
-Production envelope generation uses fresh operating-system entropy. Envelope vector tests inject a controlled all-zero entropy contribution strictly inside the test environment so the underlying deterministic BSR2 envelope logic remains reproducible.
+Do not regenerate them before an ordinary regression run.
+
+The committed vectors are stored in:
+
+- tests/known_answer_vectors.json
+
+The corresponding tests are located in:
+
+- tests/test_known_answer_vectors.py
+
+Production envelope generation uses fresh operating-system entropy.
+
+Envelope vector tests inject a controlled all-zero entropy contribution strictly inside the test environment so the underlying deterministic BSR2 envelope logic remains reproducible.
 
 The test-only zero contribution is not used during normal encryption.
 
@@ -396,15 +429,29 @@ Run the vector generator only after an intentional algorithm or format change:
 python tests/generate_test_vectors.py
 ```
 
-Any intentional vector change should be reviewed together with versioning, documentation, changelog entries, and fresh research results.
+The vector generator is located at:
+
+- tests/generate_test_vectors.py
+
+Any intentional vector change should be reviewed together with:
+
+- Versioning
+- Documentation
+- Changelog entries
+- Compatibility implications
+- Fresh research results
 
 ## Parameter Provenance
 
-[`docs/BSR2_PARAMETER_GENERATION.md`](docs/BSR2_PARAMETER_GENERATION.md) documents the deterministic parameter generator and public seed used to produce the fixed BSR2 parameters.
+docs/BSR2_PARAMETER_GENERATION.md documents the deterministic parameter generator and public seed used to produce the fixed BSR2 parameters.
 
-`tests/test_bsr2_parameters.py` verifies that regenerated parameters match the values embedded in `brisart_security_primitives.py`.
+tools/generate_bsr2_parameters.py contains the parameter-generation tool.
 
-Reproducible parameter generation documents provenance. It does not establish cryptographic strength.
+tests/test_bsr2_parameters.py verifies that regenerated parameters match the values embedded in brisart_security_primitives.py.
+
+Reproducible parameter generation documents provenance.
+
+It does not establish cryptographic strength.
 
 ## Compatibility
 
@@ -421,8 +468,10 @@ Reproducible parameter generation documents provenance. It does not establish cr
 - Source-code inspection
 - Synthetic or disposable data
 - Offline workflow prototypes
+- Air-gapped workflow prototypes
 - Parser and tamper-handling research
 - Regression testing
+- Reproducibility testing
 - Educational analysis of custom constructions
 
 ## Unsupported Uses
@@ -437,32 +486,43 @@ Do not rely on this repository as the sole protection for:
 - Valuable unpublished research
 - Production authorization
 - Safety-critical systems
+- Production security systems
 
 ## Security Claims
 
 The project does not claim:
 
 - Equivalence to AES, ChaCha20, SHA-2, SHA-3, HMAC, PBKDF2, Argon2, or another standardized construction
-- Collision or preimage resistance
+- Collision resistance
+- Preimage resistance
 - Stream indistinguishability
 - Authentication-forgery resistance
-- Differential, rotational, algebraic, or related-key resistance
+- Differential resistance
+- Rotational resistance
+- Algebraic resistance
+- Related-key resistance
 - Validation of the operating-system entropy source
 - State-compromise recovery
 - Side-channel resistance
 - Protection from complete machine-state rollback
 - Production suitability
 
-See [`SECURITY.md`](SECURITY.md) for the project security posture.
+Passing the included tests does not establish any of these properties.
+
+See [`SECURITY.md`](SECURITY.md) for the complete project security posture.
 
 ## Documentation
 
-- [`docs/DESIGN.md`](docs/DESIGN.md) describes the implemented construction and security boundaries.
-- [`docs/BSR2_PARAMETER_GENERATION.md`](docs/BSR2_PARAMETER_GENERATION.md) documents fixed-parameter generation.
-- [`docs/TESTING.md`](docs/TESTING.md) explains validation layers and vector policy.
+- docs/DESIGN.md describes the implemented construction and security boundaries.
+- docs/BSR2_PARAMETER_GENERATION.md documents fixed-parameter generation.
+- docs/TESTING.md explains validation layers and vector policy.
 - [`SECURITY.md`](SECURITY.md) defines the project security posture.
 - [`CHANGELOG.md`](CHANGELOG.md) records release history and the Alpha 3 entropy hardening.
 
 ## Licensing
 
-This project is part of the Brisart ecosystem. Current licensing terms and ecosystem policies are maintained through the BrisartLicensing project. See [`LICENSE`](LICENSE).
+This project is part of the Brisart ecosystem.
+
+Current licensing terms and ecosystem policies are maintained through the BrisartLicensing project.
+
+See LICENSE.
