@@ -21,6 +21,55 @@ Security certified:       No
 
 The project release, cryptographic construction, and envelope version are separate identifiers. Release `0.3.0-alpha` remains BSR2 and continues to use envelope version `2`.
 
+## Architecture Overview
+
+BSR2 is intentionally divided into three separate layers:
+
+1. Deterministic cryptographic research components
+2. Operating-system entropy boundary
+3. Authenticated envelope layer
+
+The deterministic layer performs transformation, hashing,
+authentication, key derivation, and deterministic expansion.
+
+The operating-system entropy layer provides fresh entropy through
+Python's standard-library interfaces.
+
+The envelope layer combines both components to produce authenticated
+ciphertext containers.
+
+The operating-system entropy source remains external to the custom
+deterministic construction.
+
+```text
+                +----------------------+
+                |   BSR2 Primitives    |
+                +----------+-----------+
+                           |
+                           v
+                +----------------------+
+                |      BSR2 DRBG       |
+                +----------+-----------+
+                           |
+                           |
+                           v
+              +------------------------+
+              |  BSR2 Envelope Layer   |
+              +-----------+------------+
+                          ^
+                          |
+                          |
+            +-------------+--------------+
+            |   OS Entropy Boundary      |
+            |   secrets.token_bytes()    |
+            +----------------------------+
+```
+
+The deterministic construction and operating-system entropy boundary are
+independent components.
+
+The envelope layer combines both during encryption.
+
 ## Purpose
 
 BrisartSecurityResearch is a small, inspectable research implementation built with the Python standard library and no third-party packages.
